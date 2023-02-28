@@ -1,0 +1,176 @@
+---
+title: "Multilevel Modelling: Assignment 2"
+author: "Ilaria Lunardelli, Giuliana Orizzonte, StudentName3"
+date: "28/03/2023"
+output: pdf_document
+---
+```{r, message=F, warning=F, echo=F}
+# Libraries: add libraries used here
+library(lme4)
+library(lattice)
+library(lmerTest)
+library(ggplot2)
+library(tidyverse)
+library(texreg)
+library(readr)
+library(tidyr)
+library(gtsummary)
+```
+
+```{r, echo=F, results='hide'}
+# Load Data
+curran <- read_csv("curran_wide.csv")
+
+#Summary Statistics 
+summary(curran)
+
+# this gives us the full number to copy into the excel sheet
+options(scipen=999)   
+```
+
+```{r, echo=F, results = 'hide'}
+
+library(tidyr)
+
+curran_long <- pivot_longer(data = curran, cols = c(2:9),                   
+                         names_to = c(".value", "time"),                   
+                         names_pattern = "(anti|read)(.)")
+
+head(curran_long)
+
+curran_long$time <- as.numeric(curran_long$time) - 1
+
+
+library(ggplot2)
+ggplot(curran_long,
+       aes(x = time, y = anti)) +
+  geom_point() +
+  geom_smooth(method = "lm",
+              aes(color = "linear"),
+              se = FALSE) +
+  geom_smooth(method = "lm",
+              formula = y ~ x + I(x^2),
+              aes(color = "quadratic"),
+              se = FALSE) 
+
+ggplot(curran_long,
+       aes(x = anti, y = read)) +
+  geom_point() +
+  geom_smooth(method = "lm",
+              aes(color = "linear"),
+              se = FALSE) +
+  geom_smooth(method = "lm",
+              formula = y ~ x + I(x^2),
+              aes(color = "quadratic"),
+              se = FALSE) 
+
+#outlier check
+ggplot(curran_long,
+       aes(x=time, y=anti, group=time, color = time)) +
+        geom_boxplot()
+
+```
+
+2. equation: probably slide 11 
+
+yti = β00 + u0i + π1iTti + eti
+
+
+```{r, echo=F, results='hide', warning=F, message=F}
+# ICC Calculations 
+
+sjstats::icc(mod_2)
+sjstats::icc(mod_3)
+
+
+mod1 <- lmer(anti ~ 1+ (1|id), REML = F, data=curran_long)
+summary(mod1)
+performance::icc(mod1)
+
+```
+```{r, echo=F, results='hide', warning=F, message=F}
+
+mod2 <- lmer(anti ~ 1 + time + (1|student), REML = F, data=curran_long)
+summary(mod2)
+performance::icc(mod2)
+
+```
+
+```{r, echo=F, results='hide', warning=F, message=F}
+
+#grand mean centering reading score 
+
+curran_long$read_gmc <- curran_long$read - mean(curran_long$read)
+
+mod3 <- lmer(anti ~ 1 + time + read_gmc + (1|id), REML = F, data=curran_long)
+summary(mod3)
+performance::icc(mod3)
+
+```
+```{r, echo=F, results='hide', warning=F, message=F}
+
+mod3 <- lmer(anti ~ 1 + time + read_gmc + (1|id), REML = F, data=curran_long)
+summary(mod3)
+performance::icc(mod3)
+
+```
+
+GPA_long$highgpa_gmc <- GPA_long$highgpa - mean(GPA_long$highgpa)
+
+mod4 <- lmer(gpa ~ 1 + time + job_gmc + highgpa_gmc + sex + (1|student), REML = F, data=GPA_long)
+summary(mod4)
+
+```{r, echo=F, results='hide', warning=F, message=F}
+
+# grand mean centering 
+curran_long$momage_gmc <- curran_long$momage - mean(curran_long$momage)
+curran_long$homecog_gmc <- curran_long$homecog - mean(curran_long$homecog)
+
+
+mod4 <- lmer(anti ~ 1 + time + read_gmc + momage_gmc + homecog_gmc + (1|id), REML = F, data=curran_long)
+summary(mod4)
+performance::icc(mod4)
+
+```
+```{r, echo=F, results='hide', warning=F, message=F}
+
+# grand mean centering 
+curran_long$momage_gmc <- curran_long$momage - mean(curran_long$momage)
+curran_long$homecog_gmc <- curran_long$homecog - mean(curran_long$homecog)
+
+
+mod4 <- lmer(anti ~ 1 + time + read_gmc + momage_gmc + homecog_gmc + (1|id), REML = F, data=curran_long)
+summary(mod4)
+performance::icc(mod4)
+
+```
+
+```{r, echo=F, results='hide', warning=F, message=F}
+
+# grand mean centering 
+mod5a <- lmer(anti ~ 1 + time + read_gmc + momage_gmc + homecog_gmc + (1 + time|id), REML = F, data=curran_long)
+summary(mod5a)
+performance::icc(mod5a)
+
+```
+
+```{r, echo=F, results='hide', warning=F, message=F}
+
+# grand mean centering 
+mod5b <- lmer(anti ~ 1 + time + read_gmc + momage_gmc + homecog_gmc + (1 + read|id), REML = F, data=curran_long)
+summary(mod5b)
+performance::icc(mod5b)
+
+```
+
+```{r, echo=F, results='hide', warning=F, message=F}
+
+# grand mean centering 
+mod6 <- lmer(anti ~ 1 + time + read_gmc + momage_gmc + homecog_gmc + time*read_gmc+ (time|id), REML = F, data=curran_long)
+summary(mod6)
+performance::icc(mod6)
+
+```
+
+#### Contributions:\
+\
