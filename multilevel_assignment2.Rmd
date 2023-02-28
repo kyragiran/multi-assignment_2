@@ -1,0 +1,216 @@
+---
+title: "Multilevel Modelling: Assignment 2"
+author: "Ilaria Lunardelli, Giuliana Orizzonte, Kyra Giran"
+date: "28/03/2023"
+output: pdf_document
+---
+```{r, message=F, warning=F, echo=F}
+# Libraries: add libraries used here
+library(lme4)
+library(lattice)
+library(lmerTest)
+library(ggplot2)
+library(tidyverse)
+library(texreg)
+library(readr)
+library(tidyr)
+library(gtsummary)
+```
+```{r, echo=F, results='hide'}
+# Load Data
+curran <- read_csv("curran_wide.csv")
+
+#Summary Statistics 
+summary(curran)
+
+# this gives us the full number to copy into the excel sheet
+options(scipen=999)   
+
+# Center time so that the first occurrence is 0
+curran_long$time <- as.numeric(curran_long$time) - 1
+
+# Convert time to factor
+curran_long$time <- as.factor(curran_long$time)
+
+#grand mean centering reading score 
+curran_long$read_gmc <- curran_long$read - mean(curran_long$read)
+
+# grand mean centering 
+curran_long$momage_gmc <- curran_long$momage - mean(curran_long$momage)
+curran_long$homecog_gmc <- curran_long$homecog - mean(curran_long$homecog)
+
+```
+
+#### Question 1
+
+Convert the wide data file into a long format. Check the data and recode if necessary.
+• Check the linearity assumption, report and include plots.
+• Check for outliers (don’t perform analyses, just look in the scatterplots), report.
+
+```{r, echo=F, results = 'hide'}
+
+# Convert the data to long format
+curran_long <- pivot_longer(data = curran, cols = c(2:9),                   
+                         names_to = c(".value", "time"),                   
+                         names_pattern = "(anti|read)(.)")
+head(curran_long)       # check dataset head
+
+# Plots to check the linearity assumption
+ggplot(curran_long,
+       aes(x = time, y = anti)) +
+  geom_point() +
+  geom_smooth(method = "lm",
+              aes(color = "linear"),
+              se = FALSE) +
+  geom_smooth(method = "lm",
+              formula = y ~ x + I(x^2),
+              aes(color = "quadratic"),
+              se = FALSE) 
+
+ggplot(curran_long,
+       aes(x = anti, y = read)) +
+  geom_point() +
+  geom_smooth(method = "lm",
+              aes(color = "linear"),
+              se = FALSE) +
+  geom_smooth(method = "lm",
+              formula = y ~ x + I(x^2),
+              aes(color = "quadratic"),
+              se = FALSE) 
+
+# Boxplot with outliers
+ggplot(curran_long,
+       aes(x=time, y=anti, group=time, color=time)) + 
+  geom_boxplot() +
+  scale_x_discrete(breaks = c(0,1,2,3)) + 
+  theme(legend.position = 'none', text = element_text(size = 7)) +
+  labs(
+    title = 'Graph 3: Boxplot with median, 1st and 3rd Quartiles, IQR, and outliers of antisocial scores by measurement wave',
+    x = 'Measurement Wave',
+    y = 'Antisocial Score'
+  )
+```
+
+#### Question 2
+
+Answer the question: should you perform a multilevel analysis?
+• What is the mixed model equation?
+• Provide and interpret the relevant results.
+• What is the intraclass correlation?
+• What is your conclusion regarding the overall question regarding the necessity of performing a multilevel analysis?
+
+yti = β00 + u0i + π1iTti + eti
+
+Model for calculating ICC:
+- $Antisocial_{ti} = \pi_{00} + u_{0i} + \epsilon_{ti}$
+
+Baseline model (time is fixed): 
+- $Antisocial_{ti} = \pi_{00} + \pi_{10}Time_{ti} + u_{0i} + \epsilon_{ti}$
+
+With time-varying covariates to predict within person variability:
+- $Antisocial_{ti} = \pi_{00} + \pi_{10}Time_{ti} + \pi_{20}Reading_{ti} + u_{0i} + \epsilon_{ti}$
+
+With time-invariant covariates to predict between persons variability:
+- $Antisocial_{ti} = \pi_{00} + \pi_{10}Time_{ti} + \pi_{20}Reading_{ti} + \beta_{01}MotherAge_{i} + \beta_{02}CognitiveStimulation_{i} + u_{0i} + \epsilon_{ti}$
+
+Allow for random time-effect:
+- $Antisocial_{ti} = \pi_{00} + \pi_{10}Time_{ti} + \pi_{20}Reading_{ti} + \beta_{01}MotherAge_{i} + \beta_{02}CognitiveStimulation_{i} + u_{1i}Time_{ti} + u_{0i} + \epsilon_{ti}$
+
+With cross level interaction to predict slope variability:
+- $Antisocial_{ti} = \pi_{00} + \pi_{10}Time_{ti} + \pi_{20}Reading_{ti} + \beta_{01}MotherAge_{i} + \beta_{02}CognitiveStimulation_{i} + \beta_{21}MotherAge_{i}Reading_{ti} + \beta_{22}CognitiveStimulation_{i}Reading_{ti} + u_{1i}Time_{ti} + u_{0i} + \epsilon_{ti}$
+
+```{r, echo=F, results='hide', warning=F, message=F}
+# ICC Calculations 
+
+mod1 <- lmer(anti ~ 1+ (1|id), REML = F, data=curran_long)
+summary(mod1)
+performance::icc(mod1)
+
+```
+```{r, echo=F, results='hide', warning=F, message=F}
+
+mod2 <- lmer(anti ~ 1 + time + (1|id), REML = F, data=curran_long)
+summary(mod2)
+performance::icc(mod2)
+
+```
+#### Question 3
+
+Add the time-varying predictor(s).
+• Provide and interpret the relevant results and provide your overall conclusion.
+
+#### Question 4
+
+On which level or levels can you expect explained variance?
+• Calculate and interpret the explained variances
+
+```{r, echo=F, results='hide', warning=F, message=F}
+
+mod3 <- lmer(anti ~ 1 + time + read_gmc + (1|id), REML = F, data=curran_long)
+summary(mod3)
+performance::icc(mod3)
+
+```
+
+#### Question 5
+
+Add the time invariant predictor(s) to the model.
+• Provide and interpret the relevant results and provide your overall conclusion.
+
+```{r, echo=F, results='hide', warning=F, message=F}
+
+mod4 <- lmer(anti ~ 1 + time + read_gmc + momage_gmc + homecog_gmc + (1|id), REML = F, data=curran_long)
+summary(mod4)
+performance::icc(mod4)
+
+```
+
+#### Question 6
+
+On which level or levels can you expect explained variance?
+• Calculate and interpret the explained variances.
+
+#### Question 7
+
+For the time-varying predictor(s), check if the slope is fixed or random.
+• What are the null- and alternative hypotheses?
+• Provide and interpret the relevant results.
+• Provide an overall conclusion
+
+```{r, echo=F, results='hide', warning=F, message=F}
+
+mod5a <- lmer(anti ~ 1 + time + read_gmc + momage_gmc + homecog_gmc + (1 + time|id), REML = F, data=curran_long)
+summary(mod5a)
+performance::icc(mod5a)
+
+```
+```{r, echo=F, results='hide', warning=F, message=F}
+
+mod5b <- lmer(anti ~ 1 + time + read_gmc + momage_gmc + homecog_gmc + (1 + read|id), REML = F, data=curran_long)
+summary(mod5b)
+performance::icc(mod5b)
+
+```
+
+#### Question 8
+
+If there is a random slope, set up a model that predicts the slope variation.
+• Provide and interpret the relevant results and provide your overall conclusion.
+
+```{r, echo=F, results='hide', warning=F, message=F}
+
+mod6 <- lmer(anti ~ 1 + time + read_gmc + momage_gmc + homecog_gmc + time*read_gmc+ (time|id), REML = F, data=curran_long)
+summary(mod6)
+performance::icc(mod6)
+
+```
+
+#### Question 9
+
+Decide on a final model.
+• provide the separate level 1 and 2 model equations, as well as the mixed model equation.
+• Check the normality assumption for both the level-1 and level-2 errors, report
+
+
+#### Contributions:\
+\
