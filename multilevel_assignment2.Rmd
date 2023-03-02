@@ -24,20 +24,7 @@ curran <- read_csv("curran_wide.csv")
 summary(curran)
 
 # this gives us the full number to copy into the excel sheet
-options(scipen=999)   
-
-# Center time so that the first occurrence is 0
-curran_long$time <- as.numeric(curran_long$time) - 1
-
-# Convert time to factor
-curran_long$time <- as.factor(curran_long$time)
-
-#grand mean centering reading score 
-curran_long$read_gmc <- curran_long$read - mean(curran_long$read)
-
-# grand mean centering 
-curran_long$momage_gmc <- curran_long$momage - mean(curran_long$momage)
-curran_long$homecog_gmc <- curran_long$homecog - mean(curran_long$homecog)
+options(scipen=999)
 
 ```
 
@@ -54,6 +41,19 @@ curran_long <- pivot_longer(data = curran, cols = c(2:9),
                          names_to = c(".value", "time"),                   
                          names_pattern = "(anti|read)(.)")
 head(curran_long)       # check dataset head
+
+# Center time so that the first occurrence is 0
+curran_long$time <- as.numeric(curran_long$time) - 1
+
+# Convert time to factor
+curran_long$time <- as.factor(curran_long$time)
+
+#grand mean centering reading score 
+curran_long$read_gmc <- curran_long$read - mean(curran_long$read)
+
+# grand mean centering 
+curran_long$momage_gmc <- curran_long$momage - mean(curran_long$momage)
+curran_long$homecog_gmc <- curran_long$homecog - mean(curran_long$homecog)
 
 # Plots to check the linearity assumption
 ggplot(curran_long,
@@ -99,8 +99,6 @@ Answer the question: should you perform a multilevel analysis?
 • What is the intraclass correlation?
 • What is your conclusion regarding the overall question regarding the necessity of performing a multilevel analysis?
 
-yti = β00 + u0i + π1iTti + eti
-
 Model for calculating ICC:
 - $Antisocial_{ti} = \pi_{00} + u_{0i} + \epsilon_{ti}$
 
@@ -120,7 +118,8 @@ With cross level interaction to predict slope variability:
 - $Antisocial_{ti} = \pi_{00} + \pi_{10}Time_{ti} + \pi_{20}Reading_{ti} + \beta_{01}MotherAge_{i} + \beta_{02}CognitiveStimulation_{i} + \beta_{21}MotherAge_{i}Reading_{ti} + \beta_{22}CognitiveStimulation_{i}Reading_{ti} + u_{1i}Time_{ti} + u_{0i} + \epsilon_{ti}$
 
 ```{r, echo=F, results='hide', warning=F, message=F}
-# ICC Calculations 
+# Convert time back to numeric for analyses
+curran_long$time <- as.numeric(curran_long$time)
 
 mod1 <- lmer(anti ~ 1+ (1|id), REML = F, data=curran_long)
 summary(mod1)
