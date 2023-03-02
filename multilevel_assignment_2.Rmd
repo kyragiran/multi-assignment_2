@@ -160,7 +160,7 @@ Since `Reading` is not a significant predictor, it is removed from subsequent mo
 On which level or levels can you expect explained variance?
 • Calculate and interpret the explained variances
 
-The model returns explained variances for both level 1 ($\sigma_{occurrence}$ = 1.69, $\sd$ = 1.30) and level 2 ($\sigma_{children}$ = 1.58, $\sd$ = 1.26). The explained variances indicates how much variation in `Antisocial` behavior is explained by our predictors. In other words, they are part of the variation in antisocial behavior that is explicitly modeled and accounted for by our predictors.
+The model returns explained variances for both level 1 ($\sigma_{occurrence}$ = 1.69, $sd$ = 1.30) and level 2 ($\sigma_{children}$ = 1.58, $sd$ = 1.26). The explained variances indicates how much variation in `Antisocial` behavior is explained by our predictors. In other words, they are part of the variation in antisocial behavior that is explicitly modeled and accounted for by our predictors.
 
 #### Question 5
 
@@ -184,7 +184,7 @@ Since `Mom Age` is not a significant predictor, it is removed from subsequent mo
 On which level or levels can you expect explained variance?
 • Calculate and interpret the explained variances.
 
-Similarly to model 3, model 4 returns explained variances for both level 1 ($\sigma_{occurrence}$ = 1.69, $\sd$ = 1.30) and level 2 ($\sigma_{children}$ = 1.49, $\sd$ = 1.22), with the difference that now predictors at the children level are also included. The explained variance at level 1 did not change because we did not change the time-varying predictors. Meanwhile, the explained variance at level 2 slightly decreased, meaning that we are able to account for slightly less of the variance in antisocial behavior.
+Similarly to model 3, model 4 returns explained variances for both level 1 ($\sigma_{occurrence}$ = 1.69, $sd$ = 1.30) and level 2 ($\sigma_{children}$ = 1.49, $sd$ = 1.22), with the difference that now predictors at the children level are also included. The explained variance at level 1 did not change because we did not change the time-varying predictors. Meanwhile, the explained variance at level 2 slightly decreased, meaning that we are able to account for slightly less of the variance in antisocial behavior.
 
 #### Question 7
 
