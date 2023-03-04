@@ -1,0 +1,248 @@
+---
+title: "Multilevel Modelling: Assignment 2"
+author: "Ilaria Lunardelli, Giuliana Orizzonte, Kyra Giran"
+date: "28/03/2023"
+output: pdf_document
+---
+```{r, message=F, warning=F, echo=F}
+# Libraries: add libraries used here
+library(lme4)
+library(lattice)
+library(lmerTest)
+library(ggplot2)
+library(tidyverse)
+library(texreg)
+library(readr)
+library(tidyr)
+library(gtsummary)
+library(jtools)
+```
+
+```{r, echo=F, results='hide'}
+# Load Data
+curran <- read_csv("curran_wide.csv")
+#Summary Statistics 
+summary(curran)
+# this gives us the full number to copy into the excel sheet
+options(scipen=999)
+```
+
+#### Question 1
+
+Convert the wide data file into a long format. Check the data and recode if necessary.
+• Check the linearity assumption, report and include plots.
+• Check for outliers (don’t perform analyses, just look in the scatterplots), report.
+
+Looking at the scatterplots we see no clear indication that the data would be modeled by a quadratic function better than a linear one. Therefore, we assume that the relation between predictors and the dependent variable can be modeled linearly.
+
+Looking at the scatterplots, we can see the presence of outliers, in the upper tail of the antisocial behavior measurement scale.
+
+```{r, echo=F, results = 'hide'}
+# Convert the data to long format
+curran_long <- pivot_longer(data = curran, cols = c(2:9),                   
+                         names_to = c(".value", "time"),                   
+                         names_pattern = "(anti|read)(.)")
+head(curran_long)       # check dataset head
+# Convert time to factor for graphs
+curran_long$time <- as.factor(curran_long$time)
+#grand mean centering
+curran_long$read_gmc <- curran_long$read - mean(curran_long$read)
+curran_long$momage_gmc <- curran_long$momage - mean(curran_long$momage)
+curran_long$homecog_gmc <- curran_long$homecog - mean(curran_long$homecog)
+# Plots to check the linearity assumption
+ggplot(curran_long,
+       aes(x = time, y = anti)) +
+  geom_point(color="#666666") +
+  geom_smooth(color= "#6699FF", method = "lm",
+              aes(color = "linear"),
+              se = FALSE) +
+  geom_smooth(color= "#FF3333", method = "lm",
+              formula = y ~ x + I(x^2),
+              aes(color = "quadratic"),
+              se = FALSE) +
+  theme_bw() +
+  labs( title = "Scatterplot Time-Anti")
+
+
+ggplot(curran_long,
+       aes(x = read_gmc, y = anti)) +
+  geom_point(color="#666666") +
+  geom_smooth(color= "#6699FF", method = "lm",
+              aes(color = "linear"),
+              se = FALSE) +
+  geom_smooth(color= "#FF3333", method = "lm",
+              formula = y ~ x + I(x^2),
+              aes(color = "quadratic"),
+              se = FALSE) +
+  theme_bw() +
+  labs( title = "Scatterplot Read-Anti")
+
+
+
+# Boxplot with outliers
+#ggplot(curran_long,
+ #      aes(x=time, y=anti, group=time, color=time)) + 
+#  geom_boxplot() +
+ # scale_x_discrete(breaks = c(0,1,2,3)) + 
+  #theme(legend.position = 'none', text = element_text(size = 7)) +
+  #labs(
+   # title = 'Graph 3: Boxplot with median, 1st and 3rd Quartiles, IQR, and outliers of antisocial scores by measurement wave',
+    #x = 'Measurement Wave',
+    #y = 'Antisocial Score'
+  #)
+```
+
+#### Question 2
+
+Answer the question: should you perform a multilevel analysis?
+• What is the mixed model equation?
+• Provide and interpret the relevant results.
+• What is the intraclass correlation?
+• What is your conclusion regarding the overall question regarding the necessity of performing a multilevel analysis?
+
+We should perform a multilevel analysis because we can expect measurements from the same individual to be much more similar than measurements across different individuals. Multilevel analysis accounts for this factor and keeps the Type I error at .05.
+
+###### Mixed Model Equations
+Model for calculating ICC:
+- $Antisocial_{ti} = \beta_{00} + u_{0i} + \epsilon_{ti}$
+
+Baseline model (time is fixed): 
+- $Antisocial_{ti} = \beta_{00} + \beta_{10}Time_{ti} + u_{0i} + \epsilon_{ti}$
+
+With time-varying covariates to predict within person variability:
+- $Antisocial_{ti} = \beta_{00} + \beta_{10}Time_{ti} + \beta_{20}Reading_{ti} + u_{0i} + \epsilon_{ti}$
+
+With time-invariant covariates to predict between persons variability:
+- $Antisocial_{ti} = \beta_{00} + \beta_{10}Time_{ti} + \beta_{20}Reading_{ti} + \beta_{01}MotherAge_{i} + \beta_{02}CognitiveStimulation_{i} + u_{0i} + \epsilon_{ti}$
+
+Allow for random time-effect:
+- $Antisocial_{ti} = \beta_{00} + \beta_{10}Time_{ti} + \beta_{20}Reading_{ti} + \beta_{01}MotherAge_{i} + \beta_{02}CognitiveStimulation_{i} + u_{1i}Time_{ti} + u_{0i} + \epsilon_{ti}$
+
+With cross level interaction to predict slope variability:
+- $Antisocial_{ti} = \beta_{00} + \beta_{10}Time_{ti} + \beta_{20}Reading_{ti} + \beta_{01}MotherAge_{i} + \beta_{02}CognitiveStimulation_{i} + \beta_{21}MotherAge_{i}Reading_{ti} + \beta_{22}CognitiveStimulation_{i}Reading_{ti} + u_{1i}Time_{ti} + u_{0i} + \epsilon_{ti}$
+
+The intraclass correlation is 0.48, which represents the expected correlation between two random time points for the same person, as well as the percentage of variance at the person level (time invariant). The ICC high enough to require multilevel analysis in order to not incur in a spurious significant result.
+
+```{r, echo=F, results='hide', warning=F, message=F}
+# Center time so that the first occurrence is 0
+curran_long$time <- as.numeric(curran_long$time) - 1
+
+mod0 <- lm(anti~1, data = curran_long)
+summary(mod0)
+
+mod1 <- lmer(anti ~ 1+ (1|id), REML = F, data=curran_long)
+summary(mod1)
+performance::icc(mod1)
+
+anova(mod1, mod0)
+
+```
+Model0:
+
+Model1: the intercept ($\beta_{00}$ = 1.82, $se$ = 0.10) represents mean of antisocial behaviour across people;var_occ($\u_{0i}$ = 1.58, $se$ = 1.26) is the random effect capturing the variance of people around their own average antisocial behaviour level; var_sub ($\\epsilon_{ti}$ = 1.74, $se$ = 1.32) is a random effect for the intercept capturing the variance of people’s average antisocial behaviour levels around the intercept.
+
+```{r, echo=F, results='hide', warning=F, message=F}
+mod2 <- lmer(anti ~ 1 + time + (1|id), REML = F, data=curran_long)
+summary(mod2)
+
+anova(mod1, mod2)
+```
+
+Model2: the intercept ($\beta_{00}$ = 1.55, $se$ = 0.11) represents mean of antisocial behaviour across people; fixed effect for time ($\beta_{10}$ = 0.18, $se$ = 0.04) tells us the average increase in antisocial behaviour levels over one unit of time; var_occ($\u_{0i}$ = 1.69, $se$ = 1.30) is the random effect capturing the variance of people around their own average antisocial behaviour level; var_sub ($\epsilon_{ti}$ = 1.59, $se$ = 1.26) is a random effect for the intercept capturing the variance of people’s average antisocial behaviour levels around the intercept.
+
+
+```{r, echo=F, results='hide', warning=F, message=F}
+mod3 <- lmer(anti ~ 1 + time + read_gmc + (1|id), REML = F, data=curran_long)
+summary(mod3)
+
+anova(mod2, mod3)
+```
+
+Model3: the intercept ($\beta_{00}$ = 1.50, $se$ = 0.15) represents mean of antisocial behaviour across people; fixed effect for time ($\beta_{10}$ = 0.21, $se$ = 0.08, t(882) = 2.73, *p* = .006, t(830) = -0.54, *p* = .588) tells us the average increase in antisocial behaviour levels over one unit of time; fixed effect for reading recognition ($\beta_{20}$ = -0.03, $se$ = 0.06) is the effect of reading recognition at time=0; var_occ($\u_{0i}$ = 1.69, $se$ = 1.30) is the random effect capturing the variance of people around their own average antisocial behaviour level; var_sub ($\epsilon_{ti}$ = 1.58, $se$ = 1.26) is a random effect for the intercept capturing the variance of people’s average antisocial behaviour levels around the intercept.
+
+#### Question 3
+
+Add the time-varying predictor(s).
+• Provide and interpret the relevant results and provide your overall conclusion.
+
+Model 3 includes as predictors the measurement waves `Time` and the children `Reading` recognition score as fixed effects at level one, representing the time-varying effects. The results show that `Time` is a significant predictor ($\beta$ = 0.21, SE = .08, t(882) = 2.73, *p* = .006) whereas the `Reading` recognition score is not ($\beta$ = -0.03, SE = .06, t(830) = -0.54, *p* = .588). Thus, we conclude that the level of `Antisocial` behavior tends to increase with time and is not affected by reading skills.
+
+Since `Reading` is not a significant predictor, it is removed from subsequent models.
+
+#### Question 4
+
+On which level or levels can you expect explained variance?
+• Calculate and interpret the explained variances
+
+The model returns explained variances for both level 1 ($\sigma_{occurrence}$ = 1.69, $sd$ = 1.30) and level 2 ($\sigma_{children}$ = 1.58, $sd$ = 1.26). The explained variances indicates how much variation in `Antisocial` behavior is explained by our predictors. In other words, they are part of the variation in antisocial behavior that is explicitly modeled and accounted for by our predictors.
+
+Using model 2 as baseline, we can calculate R2 for both level 1 ($\R^2_{level1}$ = -0.002) and level 2 ($\R^2_{level2}$ = -0.01), which measure the explained variance at the time level and at the individual level.
+
+#### Question 5
+
+Add the time invariant predictor(s) to the model.
+• Provide and interpret the relevant results and provide your overall conclusion.
+
+```{r, echo=F, results='hide', warning=F, message=F}
+mod4 <- lmer(anti ~ 1 + time + momage_gmc + homecog_gmc + (1|id), REML = F, data=curran_long)
+summary(mod4)
+
+anova(mod3, mod4)
+```
+
+Model 4 includes the measurement waves `Time` as the fixed effects at level one and the `Mom Age` as well as `Home Cognitive Stimulation` as fixed effects at level two, which is at the children level. The results show that `Time` ($\beta$ = 0.18, SE = .04, t(663) = 4.51, *p* < .001) and `Home Cognitive Stimulation` ($\beta$ = -0.13, SE = .04, t(220) = -3.35, *p* < .001) are, respectively, a positive and a negative predictor of `Antisocial` behavior. Conversely, `Mom Age` seems to have no effect ($\beta$ = 0.00, SE = .05, t(220) = -0.02, *p* = .985). In other words, antisocial behavior appears to increase over time and decrease with higher levels of cognitive stimulation, while the mother's age at birth is not an influential factor.
+
+Since `Mom Age` is not a significant predictor, it is removed from subsequent models.
+
+#### Question 6
+
+On which level or levels can you expect explained variance?
+• Calculate and interpret the explained variances.
+
+Similarly to model 3, model 4 returns explained variances for both level 1 ($\sigma_{occurrence}$ = 1.69, $sd$ = 1.30) and level 2 ($\sigma_{children}$ = 1.49, $sd$ = 1.22), with the difference that now predictors at the children level are also included. The explained variance at level 1 did not change because we did not change the time-varying predictors. Meanwhile, the explained variance at level 2 slightly decreased, meaning that we are able to account for slightly less of the variance in antisocial behavior.
+
+At this stage, we will still have the same R squared for level 1 ($\R^2_{level1}$ = -0.002) since we didn't change predictors for level 1 but, R squared at level 2 ($\R^2_{level2}$ = -0.01) increased, meaning that the variance accounted by level 2 predictors increased.
+
+#### Question 7
+
+For the time-varying predictor(s), check if the slope is fixed or random.
+• What are the null- and alternative hypotheses?
+• Provide and interpret the relevant results.
+• Provide an overall conclusion
+
+The null hypothesis is that there is no variation in the slopes of the regression lines across different children, and that any slope differences observed between children are due to chance. 
+
+The alternative hypothesis is that there is significant between-subjects variation in the slopes, meaning that the relation between the predictors and antisocial behavior varies across different children.
+
+```{r, echo=F, results='hide', warning=F, message=F}
+mod5a <- lmer(anti ~ 1 + time + homecog_gmc + (1 + time|id), REML = F, data=curran_long)
+summary(mod5a)
+
+anova(mod4, mod5a)
+
+mod5b <- lmer(anti ~ 1 + time + read_gmc + momage_gmc + homecog_gmc + (1 + read|id), REML = F, data=curran_long)
+summary(mod5b)
+
+anova(mod4, mod5b)
+```
+
+#### Question 8
+
+If there is a random slope, set up a model that predicts the slope variation.
+• Provide and interpret the relevant results and provide your overall conclusion.
+
+```{r, echo=F, results='hide', warning=F, message=F}
+mod6 <- lmer(anti ~ 1 + time + homecog_gmc + time*homecog_gmc + (time|id), REML = F, data=curran_long)
+summary(mod6)
+
+anova(mod5a, mod6)
+```
+
+#### Question 9
+
+Decide on a final model.
+• provide the separate level 1 and 2 model equations, as well as the mixed model equation.
+• Check the normality assumption for both the level-1 and level-2 errors, report
+
+
+#### Contributions:\
